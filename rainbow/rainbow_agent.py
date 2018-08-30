@@ -18,16 +18,16 @@ from typing import Union
 
 import numpy as np
 
-from agents.dqn_agent import DQNNetworkParameters, DQNAlgorithmParameters
-from agents.value_optimization_agent import ValueOptimizationAgent
-from architectures.tensorflow_components.heads.categorical_q_head import CategoricalQHeadParameters
-from architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
-from base_parameters import AgentParameters, MiddlewareScheme
-from core_types import StateType, EnvironmentSteps
-from exploration_policies.e_greedy import EGreedyParameters
-from memories.experience_replay import ExperienceReplayParameters
-from memories.prioritized_experience_replay import PrioritizedExperienceReplayParameters
-from schedules import LinearSchedule
+from rl_coach.agents.dqn_agent import DQNNetworkParameters, DQNAlgorithmParameters
+from rl_coach.agents.value_optimization_agent import ValueOptimizationAgent
+from rl_coach.architectures.tensorflow_components.heads.categorical_q_head import CategoricalQHeadParameters
+from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
+from rl_coach.base_parameters import AgentParameters, MiddlewareScheme
+from rl_coach.core_types import StateType, EnvironmentSteps
+from rl_coach.exploration_policies.e_greedy import EGreedyParameters
+from rl_coach.memories.non_episodic.experience_replay import ExperienceReplayParameters
+from rl_coach.memories.non_episodic.prioritized_experience_replay import PrioritizedExperienceReplayParameters
+from rl_coach.schedules import LinearSchedule
 
 from rainbow.rainbow_head import RainbowHeadParameters
 

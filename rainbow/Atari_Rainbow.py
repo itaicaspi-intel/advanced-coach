@@ -3,15 +3,15 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rainbow.rainbow_agent import RainbowAgentParameters
-from architectures.tensorflow_components.heads.dueling_q_head import DuelingQHeadParameters
-from graph_managers.basic_rl_graph_manager import BasicRLGraphManager
-from graph_managers.graph_manager import ScheduleParameters
-from base_parameters import VisualizationParameters
-from core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
-from environments.environment import MaxDumpMethod, SelectedPhaseOnlyDumpMethod, SingleLevelSelection
-from environments.gym_environment import Atari, atari_deterministic_v4
-from memories.prioritized_experience_replay import PrioritizedExperienceReplayParameters
-from schedules import LinearSchedule
+from rl_coach.architectures.tensorflow_components.heads.dueling_q_head import DuelingQHeadParameters
+from rl_coach.graph_managers.basic_rl_graph_manager import BasicRLGraphManager
+from rl_coach.graph_managers.graph_manager import ScheduleParameters
+from rl_coach.base_parameters import VisualizationParameters
+from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
+from rl_coach.environments.environment import MaxDumpMethod, SelectedPhaseOnlyDumpMethod, SingleLevelSelection
+from rl_coach.environments.gym_environment import Atari, atari_deterministic_v4
+from rl_coach.memories.non_episodic.prioritized_experience_replay import PrioritizedExperienceReplayParameters
+from rl_coach.schedules import LinearSchedule
 
 ####################
 # Graph Scheduling #

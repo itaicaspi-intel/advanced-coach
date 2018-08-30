@@ -16,10 +16,10 @@
 
 import tensorflow as tf
 
-from architectures.tensorflow_components.heads.head import Head, HeadParameters
-from base_parameters import AgentParameters
-from core_types import QActionStateValue
-from spaces import SpacesDefinition
+from rl_coach.architectures.tensorflow_components.heads.head import Head, HeadParameters
+from rl_coach.base_parameters import AgentParameters
+from rl_coach.core_types import QActionStateValue
+from rl_coach.spaces import SpacesDefinition
 
 
 class RainbowHeadParameters(HeadParameters):

@@ -19,7 +19,7 @@ schedule_params = ScheduleParameters()
 schedule_params.improve_steps = TrainingSteps(10000000000)
 schedule_params.steps_between_evaluation_periods = EnvironmentEpisodes(100000000)
 schedule_params.evaluation_steps = EnvironmentEpisodes(1)
-schedule_params.heatup_steps = EnvironmentSteps(100)
+schedule_params.heatup_steps = EnvironmentSteps(1000)
 
 #########
 # Agent #
@@ -27,11 +27,12 @@ schedule_params.heatup_steps = EnvironmentSteps(100)
 agent_params = SILAgentParameters()
 
 agent_params.algorithm.apply_gradients_every_x_episodes = 1
-agent_params.algorithm.num_steps_between_gradient_updates = 20
-agent_params.algorithm.beta_entropy = 0.05
+agent_params.algorithm.num_steps_between_gradient_updates = 5
+agent_params.algorithm.beta_entropy = 0.01
 
 agent_params.network_wrappers['main'].middleware_parameters = FCMiddlewareParameters()
-agent_params.network_wrappers['main'].learning_rate = 0.0001
+agent_params.network_wrappers['main'].learning_rate = 0.0007
+agent_params.network_wrappers['main'].batch_size = 512
 
 agent_params.exploration = CategoricalParameters()
 
