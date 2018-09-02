@@ -24,8 +24,9 @@ from rl_coach.architectures.tensorflow_components.heads.policy_head import Polic
 from rl_coach.architectures.tensorflow_components.heads.v_head import VHeadParameters
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
 from rl_coach.base_parameters import AlgorithmParameters, NetworkParameters, \
-    AgentParameters, InputEmbedderParameters
-from rl_coach.core_types import QActionStateValue, Batch, RunPhase
+    AgentParameters
+from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
+from rl_coach.core_types import QActionStateValue, Batch, RunPhase, Episode
 from rl_coach.memories.episodic.episodic_experience_replay import EpisodicExperienceReplayParameters
 from rl_coach.memories.memory import MemoryGranularity
 from rl_coach.memories.non_episodic.prioritized_experience_replay import PrioritizedExperienceReplay, \
@@ -197,7 +198,7 @@ class SILAgent(ActorCriticAgent):
         return total_loss, losses, unclipped_grads
 
     def train(self):
-        episode = self.current_episode_buffer  # TODO: in the last transition of the episode, the episode will be taken from the memory which is a bug
+        episode = self.current_episode_buffer
 
         # check if we should calculate gradients or skip
         episode_ended = episode.is_complete
@@ -208,7 +209,6 @@ class SILAgent(ActorCriticAgent):
 
         total_loss = 0
         if num_steps_passed_since_last_update > 0:
-
             # we need to update the returns of the episode until now
             episode.update_returns()
 
@@ -222,12 +222,6 @@ class SILAgent(ActorCriticAgent):
             for idx in range(start_idx, end_idx):
                 transitions.append(episode.get_transition(idx))
             self.last_gradient_update_step_idx = end_idx
-
-            # update the statistics for the variance reduction techniques
-            if self.policy_gradient_rescaler in \
-                    [PolicyGradientRescaler.FUTURE_RETURN_NORMALIZED_BY_EPISODE,
-                     PolicyGradientRescaler.FUTURE_RETURN_NORMALIZED_BY_TIMESTEP]:
-                self.update_episode_statistics(episode)
 
             # accumulate the gradients and apply them once in every apply_gradients_every_x_episodes episodes
             batch = Batch(transitions)

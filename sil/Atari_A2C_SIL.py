@@ -32,7 +32,9 @@ agent_params.algorithm.beta_entropy = 0.01
 
 agent_params.network_wrappers['main'].middleware_parameters = FCMiddlewareParameters()
 agent_params.network_wrappers['main'].learning_rate = 0.0007
-agent_params.network_wrappers['main'].batch_size = 512
+agent_params.network_wrappers['main'].batch_size = 32
+agent_params.network_wrappers['main'].async_training = False
+agent_params.network_wrappers['main'].scale_down_gradients_by_number_of_workers_for_sync_training = False
 
 agent_params.exploration = CategoricalParameters()
 
