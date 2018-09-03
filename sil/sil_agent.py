@@ -48,7 +48,7 @@ class SILAlgorithmParameters(ActorCriticAlgorithmParameters):
         self.gae_lambda = 0.96
         self.estimate_state_value_using_gae = False
         self.store_transitions_only_when_episodes_are_terminated = True
-        self.off_policy_training_steps_per_on_policy_training_steps = 5
+        self.off_policy_training_steps_per_on_policy_training_steps = 4
 
 
 class SILNetworkParameters(ActorCriticNetworkParameters):
@@ -84,75 +84,6 @@ class SILAgent(ActorCriticAgent):
     def __init__(self, agent_parameters, parent: Union['LevelManager', 'CompositeAgent']=None):
         super().__init__(agent_parameters, parent)
 
-    def learn_from_batch_on_policy(self, batch):
-        # batch contains a list of episodes to learn from
-        network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
-
-        # get the values for the current states
-
-        result = self.networks['main'].online_network.predict(batch.states(network_keys))
-        current_state_values = result[0]
-
-        self.state_values.add_sample(current_state_values)
-
-        # the targets for the state value estimator
-        num_transitions = batch.size
-        state_value_head_targets = np.zeros((num_transitions, 1))
-
-        # estimate the advantage function
-        action_advantages = np.zeros((num_transitions, 1))
-
-        if self.policy_gradient_rescaler == PolicyGradientRescaler.A_VALUE:
-            if batch.game_overs()[-1]:
-                R = 0
-            else:
-                R = self.networks['main'].online_network.predict(last_sample(batch.next_states(network_keys)))[0]
-
-            for i in reversed(range(num_transitions)):
-                R = batch.rewards()[i] + self.ap.algorithm.discount * R
-                state_value_head_targets[i] = R
-                action_advantages[i] = R - current_state_values[i]
-
-        elif self.policy_gradient_rescaler == PolicyGradientRescaler.GAE:
-            # get bootstraps
-            bootstrapped_value = self.networks['main'].online_network.predict(last_sample(batch.next_states(network_keys)))[0]
-            values = np.append(current_state_values, bootstrapped_value)
-            if batch.game_overs()[-1]:
-                values[-1] = 0
-
-            # get general discounted returns table
-            gae_values, state_value_head_targets = self.get_general_advantage_estimation_values(batch.rewards(), values)
-            action_advantages = np.vstack(gae_values)
-        else:
-            screen.warning("WARNING: The requested policy gradient rescaler is not available")
-
-        action_advantages = action_advantages.squeeze(axis=-1)
-        actions = batch.actions()
-        if not isinstance(self.spaces.action, DiscreteActionSpace) and len(actions.shape) < 2:
-            actions = np.expand_dims(actions, -1)
-
-        # train
-        result = self.networks['main'].online_network.accumulate_gradients({**batch.states(network_keys),
-                                                                            'output_1_0': actions},
-                                                                       [state_value_head_targets, action_advantages])
-
-        # logging
-        total_loss, losses, unclipped_grads = result[:3]
-        self.action_advantages.add_sample(action_advantages)
-        self.unclipped_grads.add_sample(unclipped_grads)
-        self.value_loss.add_sample(losses[0])
-        self.policy_loss.add_sample(losses[1])
-
-        return total_loss, losses, unclipped_grads
-
-    def update_transition_priorities_and_get_weights(self, TD_errors, batch):
-        # update errors in prioritized replay buffer
-        importance_weights = None
-        if isinstance(self.memory, PrioritizedExperienceReplay):
-            self.call_memory('update_priorities', (batch.info('idx'), TD_errors))
-            importance_weights = batch.info('weight')
-        return importance_weights
-
     def learn_from_batch_off_policy(self, batch):
         # batch contains a list of episodes to learn from
         network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
@@ -184,7 +115,7 @@ class SILAgent(ActorCriticAgent):
         importance_weights = self.update_transition_priorities_and_get_weights(action_advantages, batch)
 
         # train
-        result = self.networks['main'].online_network.accumulate_gradients(
+        result = self.networks['main'].train_and_sync_networks(
             {**batch.states(network_keys), 'output_1_0': actions}, [state_value_head_targets, action_advantages],
             importance_weights=importance_weights)
 
