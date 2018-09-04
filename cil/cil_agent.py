@@ -85,7 +85,7 @@ class SACActorNetworkParameters(NetworkParameters):
         self.scale_down_gradients_by_number_of_workers_for_sync_training = False
 
 
-class SACAlgorithmParameters(AlgorithmParameters):
+class CILAlgorithmParameters(AlgorithmParameters):
     def __init__(self):
         super().__init__()
         self.num_steps_between_copying_online_weights_to_target = EnvironmentSteps(1)
@@ -99,18 +99,12 @@ class SACExplorationParameters(EGreedyParameters):
         self.evaluation_epsilon = 0.001
 
 
-class SACMemoryParameters(PrioritizedExperienceReplayParameters):
-    def __init__(self):
-        super().__init__()
-        self.alpha = 0.5
-        self.beta = LinearSchedule(0.4, 1, 100000000)
 
-
-class SACAgentParameters(AgentParameters):
+class CILAgentParameters(AgentParameters):
     def __init__(self):
-        super().__init__(algorithm=RainbowAlgorithmParameters(),
-                         exploration=RainbowExplorationParameters(),
-                         memory=RainbowMemoryParameters(),
+        super().__init__(algorithm=CILAlgorithmParameters(),
+                         exploration=ExplorationParameters(),
+                         memory=EpisodicExperienceReplayParameters(),
                          networks={"actor": SACActorNetworkParameters(),
                                    "q": SACQNetworkParameters(),
                                    "v": SACVNetworkParameters()})

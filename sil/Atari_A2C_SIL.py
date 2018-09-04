@@ -8,6 +8,7 @@ from rl_coach.graph_managers.graph_manager import ScheduleParameters
 from rl_coach.memories.memory import MemoryGranularity
 from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
 from rl_coach.exploration_policies.categorical import CategoricalParameters
+from rl_coach.schedules import ConstantSchedule
 from sil.sil_agent import SILAgentParameters
 
 
@@ -17,8 +18,8 @@ from sil.sil_agent import SILAgentParameters
 
 schedule_params = ScheduleParameters()
 schedule_params.improve_steps = TrainingSteps(10000000000)
-schedule_params.steps_between_evaluation_periods = EnvironmentEpisodes(100000000)
-schedule_params.evaluation_steps = EnvironmentEpisodes(1)
+schedule_params.steps_between_evaluation_periods = EnvironmentEpisodes(100)
+schedule_params.evaluation_steps = EnvironmentEpisodes(3)
 schedule_params.heatup_steps = EnvironmentSteps(1000)
 
 #########
@@ -38,6 +39,7 @@ agent_params.network_wrappers['main'].scale_down_gradients_by_number_of_workers_
 
 agent_params.memory.shared_memory = True
 agent_params.memory.max_size = (MemoryGranularity.Transitions, 100000)
+agent_params.memory.beta = ConstantSchedule(0.1)
 
 agent_params.exploration = CategoricalParameters()
 

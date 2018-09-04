@@ -3,29 +3,25 @@ import os
 
 import numpy as np
 
-from architectures.tensorflow_components.architecture import Conv2d, Dense
-from architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
-from architectures.tensorflow_components.middlewares.middleware import MiddlewareParameters
-from environments.carla_environment import CarlaEnvironmentParameters, CameraTypes
-from filters.filter import InputFilter
-from filters.observation.observation_crop_filter import ObservationCropFilter
-from filters.observation.observation_reduction_by_sub_parts_name_filter import ObservationReductionBySubPartsNameFilter
-from filters.observation.observation_rescale_to_size_filter import ObservationRescaleToSizeFilter
-from filters.observation.observation_to_uint8_filter import ObservationToUInt8Filter
-from spaces import ImageObservationSpace
+from rl_coach.architectures.tensorflow_components.architecture import Conv2d, Dense
+from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
+from rl_coach.architectures.tensorflow_components.middlewares.middleware import MiddlewareParameters
+from rl_coach.environments.carla_environment import CarlaEnvironmentParameters, CameraTypes
+from rl_coach.filters.filter import InputFilter
+from rl_coach.filters.observation.observation_crop_filter import ObservationCropFilter
+from rl_coach.filters.observation.observation_reduction_by_sub_parts_name_filter import ObservationReductionBySubPartsNameFilter
+from rl_coach.filters.observation.observation_rescale_to_size_filter import ObservationRescaleToSizeFilter
+from rl_coach.filters.observation.observation_to_uint8_filter import ObservationToUInt8Filter
+from rl_coach.spaces import ImageObservationSpace
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from rainbow.rainbow_agent import RainbowAgentParameters
-from architectures.tensorflow_components.heads.dueling_q_head import DuelingQHeadParameters
-from graph_managers.basic_rl_graph_manager import BasicRLGraphManager
-from graph_managers.graph_manager import ScheduleParameters
-from base_parameters import VisualizationParameters, InputEmbedderParameters
-from core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
-from environments.environment import MaxDumpMethod, SelectedPhaseOnlyDumpMethod, SingleLevelSelection
-from environments.gym_environment import Atari, atari_deterministic_v4
-from memories.prioritized_experience_replay import PrioritizedExperienceReplayParameters
-from schedules import LinearSchedule
+from rl_coach.graph_managers.basic_rl_graph_manager import BasicRLGraphManager
+from rl_coach.graph_managers.graph_manager import ScheduleParameters
+from rl_coach.base_parameters import VisualizationParameters, InputEmbedderParameters
+from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
+from rl_coach.environments.environment import MaxDumpMethod, SelectedPhaseOnlyDumpMethod, SingleLevelSelection
 
 ####################
 # Graph Scheduling #

@@ -17,25 +17,21 @@
 from typing import Union
 
 import numpy as np
-import scipy.signal
-from rl_coach.agents.actor_critic_agent import ActorCriticAgent, ActorCriticAlgorithmParameters, ActorCriticNetworkParameters
-from rl_coach.agents.policy_optimization_agent import PolicyOptimizationAgent, PolicyGradientRescaler
+from rl_coach.utils import force_list
+
+from rl_coach.agents.actor_critic_agent import ActorCriticAgent, ActorCriticAlgorithmParameters, \
+    ActorCriticNetworkParameters
+from rl_coach.agents.policy_optimization_agent import PolicyGradientRescaler
+from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
 from rl_coach.architectures.tensorflow_components.heads.policy_head import PolicyHeadParameters
 from rl_coach.architectures.tensorflow_components.heads.v_head import VHeadParameters
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
-from rl_coach.base_parameters import AlgorithmParameters, NetworkParameters, \
-    AgentParameters
-from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
-from rl_coach.core_types import QActionStateValue, Batch, RunPhase, Episode
-from rl_coach.memories.episodic.episodic_experience_replay import EpisodicExperienceReplayParameters
-from rl_coach.memories.memory import MemoryGranularity
+from rl_coach.base_parameters import AgentParameters
+from rl_coach.core_types import Batch
+from rl_coach.logger import screen
 from rl_coach.memories.non_episodic.prioritized_experience_replay import PrioritizedExperienceReplay, \
     PrioritizedExperienceReplayParameters
 from rl_coach.spaces import DiscreteActionSpace
-from rl_coach.utils import last_sample
-
-from rl_coach.logger import screen
-from rl_coach.memories.episodic.single_episode_buffer import SingleEpisodeBufferParameters
 
 
 class SILAlgorithmParameters(ActorCriticAlgorithmParameters):
@@ -58,6 +54,7 @@ class SILNetworkParameters(ActorCriticNetworkParameters):
         self.middleware_parameters = FCMiddlewareParameters()
         self.heads_parameters = [VHeadParameters(), PolicyHeadParameters()]
         self.loss_weights = [0.5, 1.0]
+        self.sil_loss_weights = [0.5*0.01, 1.0]
         self.rescale_gradient_from_head_by_factor = [1, 1]
         self.optimizer_type = 'Adam'
         self.clip_gradients = 40.0
@@ -139,13 +136,21 @@ class SILAgent(ActorCriticAgent):
         return total_loss, losses, unclipped_grads
 
     def post_training_commands(self):
-        # sil training
         # remove entropy regularization
         self.networks['main'].online_network.set_variable_value(
             self.networks['main'].online_network.output_heads[1].set_beta, 0,
             self.networks['main'].online_network.output_heads[1].beta_placeholder
         )
 
+        # set the loss weights to the SIL loss weights
+        for output_head_idx, output_head in enumerate(self.networks['main'].online_network.output_heads):
+            self.networks['main'].online_network.set_variable_value(
+                output_head.set_loss_weight,
+                force_list(self.ap.network_wrappers['main'].sil_loss_weights[output_head_idx]),
+                output_head.loss_weight_placeholder
+            )
+
+        # sil training
         for i in range(self.ap.algorithm.off_policy_training_steps_per_on_policy_training_steps):
             off_policy_loss = self.train_off_policy()
 
@@ -155,6 +160,14 @@ class SILAgent(ActorCriticAgent):
             self.ap.algorithm.beta_entropy,
             self.networks['main'].online_network.output_heads[1].beta_placeholder
         )
+
+        # recover the regular loss weights
+        for output_head_idx, output_head in enumerate(self.networks['main'].online_network.output_heads):
+            self.networks['main'].online_network.set_variable_value(
+                output_head.set_loss_weight,
+                force_list(self.ap.network_wrappers['main'].loss_weights[output_head_idx]),
+                output_head.loss_weight_placeholder
+            )
 
     def train_off_policy(self):
         loss = 0
