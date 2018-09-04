@@ -42,9 +42,9 @@ class SILAlgorithmParameters(ActorCriticAlgorithmParameters):
     def __init__(self):
         super().__init__()
         self.policy_gradient_rescaler = PolicyGradientRescaler.A_VALUE
-        self.apply_gradients_every_x_episodes = 5
-        self.beta_entropy = 0
-        self.num_steps_between_gradient_updates = 5000  # this is called t_max in all the papers
+        self.apply_gradients_every_x_episodes = 1
+        self.beta_entropy = 0.01
+        self.num_steps_between_gradient_updates = 5  # this is called t_max in all the papers
         self.gae_lambda = 0.96
         self.estimate_state_value_using_gae = False
         self.store_transitions_only_when_episodes_are_terminated = True
@@ -84,6 +84,15 @@ class SILAgent(ActorCriticAgent):
     def __init__(self, agent_parameters, parent: Union['LevelManager', 'CompositeAgent']=None):
         super().__init__(agent_parameters, parent)
 
+    # needed here since it is only implemented for ValueOptimizationAgent
+    def update_transition_priorities_and_get_weights(self, TD_errors, batch):
+        # update errors in prioritized replay buffer
+        importance_weights = None
+        if isinstance(self.memory, PrioritizedExperienceReplay):
+            self.call_memory('update_priorities', (batch.info('idx'), TD_errors))
+            importance_weights = batch.info('weight')
+        return importance_weights
+
     def learn_from_batch_off_policy(self, batch):
         # batch contains a list of episodes to learn from
         network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
@@ -93,7 +102,7 @@ class SILAgent(ActorCriticAgent):
         current_state_values = result[0]
         self.state_values.add_sample(current_state_values)
 
-        # the targets for the state value estimator
+        # the targets for the state value estimator are max(R, V) which is the same as clipping the error to > 0
         num_transitions = batch.size
         state_value_head_targets = np.maximum(batch.total_returns(expand_dims=True), current_state_values)
 
@@ -102,11 +111,12 @@ class SILAgent(ActorCriticAgent):
 
         if self.policy_gradient_rescaler == PolicyGradientRescaler.A_VALUE:
             action_advantages = batch.total_returns() - current_state_values.squeeze()
+            # clip negative advantages to get the SIL rescaler (R - V)+
+            action_advantages = np.clip(action_advantages, 0, np.inf)
         else:
             screen.warning("WARNING: The requested policy gradient rescaler is not available")
 
-        # clip negative advantages
-        action_advantages = np.clip(action_advantages, 0, np.inf)
+        # extract action indices
         actions = batch.actions()
         if not isinstance(self.spaces.action, DiscreteActionSpace) and len(actions.shape) < 2:
             actions = np.expand_dims(actions, -1)
@@ -130,8 +140,21 @@ class SILAgent(ActorCriticAgent):
 
     def post_training_commands(self):
         # sil training
+        # remove entropy regularization
+        self.networks['main'].online_network.set_variable_value(
+            self.networks['main'].online_network.output_heads[1].set_beta, 0,
+            self.networks['main'].online_network.output_heads[1].beta_placeholder
+        )
+
         for i in range(self.ap.algorithm.off_policy_training_steps_per_on_policy_training_steps):
             off_policy_loss = self.train_off_policy()
+
+        # add back entropy regularization
+        self.networks['main'].online_network.set_variable_value(
+            self.networks['main'].online_network.output_heads[1].set_beta,
+            self.ap.algorithm.beta_entropy,
+            self.networks['main'].online_network.output_heads[1].beta_placeholder
+        )
 
     def train_off_policy(self):
         loss = 0

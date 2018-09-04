@@ -5,7 +5,7 @@ from rl_coach.environments.environment import SingleLevelSelection, SelectedPhas
 from rl_coach.environments.gym_environment import Atari, atari_deterministic_v4
 from rl_coach.graph_managers.basic_rl_graph_manager import BasicRLGraphManager
 from rl_coach.graph_managers.graph_manager import ScheduleParameters
-
+from rl_coach.memories.memory import MemoryGranularity
 from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
 from rl_coach.exploration_policies.categorical import CategoricalParameters
 from sil.sil_agent import SILAgentParameters
@@ -37,6 +37,7 @@ agent_params.network_wrappers['main'].async_training = False
 agent_params.network_wrappers['main'].scale_down_gradients_by_number_of_workers_for_sync_training = True
 
 agent_params.memory.shared_memory = True
+agent_params.memory.max_size = (MemoryGranularity.Transitions, 100000)
 
 agent_params.exploration = CategoricalParameters()
 
