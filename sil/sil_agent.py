@@ -39,11 +39,12 @@ class SILAlgorithmParameters(ActorCriticAlgorithmParameters):
         super().__init__()
         self.policy_gradient_rescaler = PolicyGradientRescaler.A_VALUE
         self.apply_gradients_every_x_episodes = 1
-        self.beta_entropy = 0.01
+        self.beta_entropy = 0.01  # only used for A2C training, when training with SIL it is overwritten by 0
         self.num_steps_between_gradient_updates = 5  # this is called t_max in all the papers
         self.gae_lambda = 0.96
         self.estimate_state_value_using_gae = False
-        self.store_transitions_only_when_episodes_are_terminated = True
+        self.store_transitions_only_when_episodes_are_terminated = True  # since we want to calculate the returns before
+                                                                         # adding it to the replay buffer
         self.off_policy_training_steps_per_on_policy_training_steps = 4
 
 
@@ -54,12 +55,12 @@ class SILNetworkParameters(ActorCriticNetworkParameters):
         self.middleware_parameters = FCMiddlewareParameters()
         self.heads_parameters = [VHeadParameters(), PolicyHeadParameters()]
         self.loss_weights = [0.5, 1.0]
-        self.sil_loss_weights = [0.5*0.01, 1.0]
+        self.sil_loss_weights = [0.5*0.01, 1.0]  # called beta^SIL in the paper
         self.rescale_gradient_from_head_by_factor = [1, 1]
         self.optimizer_type = 'Adam'
         self.clip_gradients = 40.0
-        self.batch_size = 32
-        self.async_training = False
+        self.batch_size = 32  # = 512 / 16 workers (since training is synchronous)
+        self.async_training = False  # A2C
         self.shared_optimizer = True
 
 

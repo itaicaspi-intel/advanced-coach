@@ -35,11 +35,13 @@ agent_params.network_wrappers['main'].middleware_parameters = FCMiddlewareParame
 agent_params.network_wrappers['main'].learning_rate = 0.0007
 agent_params.network_wrappers['main'].batch_size = 32
 agent_params.network_wrappers['main'].async_training = False
+# scaling down the gradients + each agent trains with a batch of 32 = one agent training with a batch of 512
 agent_params.network_wrappers['main'].scale_down_gradients_by_number_of_workers_for_sync_training = True
 
-agent_params.memory.shared_memory = True
+agent_params.memory.shared_memory = True  # according to the SIL code, only a single replay buffer is used
 agent_params.memory.max_size = (MemoryGranularity.Transitions, 100000)
-agent_params.memory.beta = ConstantSchedule(0.1)
+agent_params.memory.beta = ConstantSchedule(0.1)  # called bias correction in the paper - this value is only used for
+                                                  # hard exploration problems
 
 agent_params.exploration = CategoricalParameters()
 

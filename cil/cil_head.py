@@ -16,55 +16,41 @@
 
 import tensorflow as tf
 
-from architectures.tensorflow_components.heads.head import Head, HeadParameters
-from base_parameters import AgentParameters
-from core_types import QActionStateValue
-from spaces import SpacesDefinition
+from rl_coach.architectures.tensorflow_components.architecture import Dense
+
+from rl_coach.architectures.tensorflow_components.heads.head import Head, HeadParameters
+from rl_coach.base_parameters import AgentParameters
+from rl_coach.core_types import QActionStateValue
+from rl_coach.spaces import SpacesDefinition, BoxActionSpace, DiscreteActionSpace
 
 
-class RainbowHeadParameters(HeadParameters):
-    def __init__(self, activation_function: str ='relu', name: str='categorical_q_head_params'):
-        super().__init__(parameterized_class=RainbowHead, activation_function=activation_function, name=name)
+class RegressionHeadParameters(HeadParameters):
+    def __init__(self, activation_function: str ='relu', name: str='q_head_params', dense_layer=Dense):
+        super().__init__(parameterized_class=RegressionHead, activation_function=activation_function, name=name,
+                         dense_layer=dense_layer)
 
 
-class RainbowHead(Head):
+class RegressionHead(Head):
     def __init__(self, agent_parameters: AgentParameters, spaces: SpacesDefinition, network_name: str,
-                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str ='relu'):
-        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function)
-        self.name = 'categorical_dqn_head'
-        self.num_actions = len(self.spaces.action.actions)
-        self.num_atoms = agent_parameters.algorithm.atoms
+                 head_idx: int = 0, loss_weight: float = 1., is_local: bool = True, activation_function: str='relu',
+                 dense_layer=Dense):
+        super().__init__(agent_parameters, spaces, network_name, head_idx, loss_weight, is_local, activation_function,
+                         dense_layer=dense_layer)
+        self.name = 'regression_head'
+        if isinstance(self.spaces.action, BoxActionSpace):
+            self.num_actions = 1
+        elif isinstance(self.spaces.action, DiscreteActionSpace):
+            self.num_actions = len(self.spaces.action.actions)
         self.return_type = QActionStateValue
+        if agent_parameters.network_wrappers[self.network_name].replace_mse_with_huber_loss:
+            self.loss_type = tf.losses.huber_loss
+        else:
+            self.loss_type = tf.losses.mean_squared_error
 
     def _build_module(self, input_layer):
-        self.actions = tf.placeholder(tf.int32, [None], name="actions")
-        self.input = [self.actions]
+        self.fc1 = self.dense_layer(256)(input_layer)
+        self.fc2 = self.dense_layer(256)(self.fc1)
+        self.output = self.dense_layer(self.num_actions)(self.fc2, name='output')
 
-        # state value tower - V
-        with tf.variable_scope("state_value"):
-            state_value = tf.layers.dense(input_layer, 512, activation=self.activation_function, name='fc1')
-            state_value = tf.layers.dense(state_value, self.num_atoms, name='fc2')
-            state_value = tf.expand_dims(state_value, axis=1)
 
-        # action advantage tower - A
-        with tf.variable_scope("action_advantage"):
-            action_advantage = tf.layers.dense(input_layer, 512, activation=self.activation_function, name='fc1')
-            action_advantage = tf.layers.dense(action_advantage, self.num_atoms * self.num_actions, name='fc2')
-            action_advantage = tf.reshape(action_advantage,
-                                          (tf.shape(action_advantage)[0], self.num_actions, self.num_atoms))
-            action_advantage = action_advantage - tf.reduce_mean(action_advantage)
-
-        # merge to state-action value function Q
-        values_distribution = tf.add(state_value, action_advantage, name='output')
-        values_distribution = tf.reshape(values_distribution, (tf.shape(values_distribution)[0], self.num_actions,
-                                                               self.num_atoms))
-        # softmax on atoms dimension
-        self.output = tf.nn.softmax(values_distribution)
-
-        # calculate cross entropy loss
-        self.distributions = tf.placeholder(tf.float32, shape=(None, self.num_actions, self.num_atoms),
-                                            name="distributions")
-        self.target = self.distributions
-        self.loss = tf.nn.softmax_cross_entropy_with_logits(labels=self.target, logits=values_distribution)
-        tf.losses.add_loss(self.loss)
 

@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 
+from cil.cil_head import RegressionHeadParameters
 from rl_coach.architectures.tensorflow_components.architecture import Conv2d, Dense
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
 from rl_coach.architectures.tensorflow_components.middlewares.middleware import MiddlewareParameters
@@ -37,6 +38,7 @@ schedule_params.heatup_steps = EnvironmentSteps(20000)
 ################
 agent_params = RainbowAgentParameters()
 
+# forward camera input
 agent_params.network_wrappers['main'].input_embedders_parameters['forward_camera'] = \
     InputEmbedderParameters(scheme=[Conv2d([32, 5, 2]),
                                     Conv2d([32, 3, 1]),
@@ -55,17 +57,28 @@ agent_params.network_wrappers['main'].input_embedders_parameters['forward_camera
 # TODO: dropout rate can be configured currently
 # TODO: dropout should be configured differenetly per layer [1.0] * 8 + [0.7] * 2 + [0.5] * 2 + [0.5] * 1 + [0.5, 1.] * 5
 
+# measurements input
 agent_params.network_wrappers['main'].input_embedders_parameters['measurements'] = \
     InputEmbedderParameters(scheme=[Dense([128]),
                                     Dense([128])])
 
+# simple fc middleware
 agent_params.network_wrappers['main'].middleware_parameters = FCMiddlewareParameters(scheme=[Dense([512])])
 
-# TODO: head structure and loss
+# output branches
+agent_params.network_wrappers['main'].heads_parameters = [
+    RegressionHeadParameters(),  # follow lane (2 in the dataset)
+    RegressionHeadParameters(),  # left        (3 in the dataset)
+    RegressionHeadParameters(),  # right       (4 in the dataset)
+    RegressionHeadParameters()   # straight    (5 in the dataset)
+]
+# TODO: there should be another head predicting the speed which is connected directly to the forward camera embedding
 
 agent_params.network_wrappers['main'].batch_size = 120
 agent_params.network_wrappers['main'].learning_rate = 0.0002
 
+
+# crop and rescale the image + use only the forward speed measurement
 agent_params.input_filter = InputFilter()
 agent_params.input_filter.add_observation_filter('forward_camera', 'cropping',
                                                  ObservationCropFilter(crop_low=np.array([115, 0, 0]),
