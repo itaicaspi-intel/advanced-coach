@@ -102,6 +102,7 @@ agent_params.input_filter.add_observation_filter(
 
 # TODO: normalize the speed with the maximum speed from the training set speed /= 25
 
+agent_params.memory.load_memory_from_file_path = "/home/cvds_lab/Documents/advanced-coach/carla_train_set_replay_buffer.p"
 
 ###############
 # Environment #
