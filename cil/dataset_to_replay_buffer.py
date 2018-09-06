@@ -29,7 +29,7 @@ for file_idx, file in enumerate(train_set_files[:500]):
     for transition_idx in range(file_length):
         transition = Transition(
             state={
-                'observation': observations[transition_idx],
+                'forward_camera': observations[transition_idx],
                 'measurements': measurements[transition_idx],
                 'high_level_command': high_level_commands[transition_idx]
             },

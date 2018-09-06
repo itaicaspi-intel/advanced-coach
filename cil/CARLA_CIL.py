@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 
+from cil.cil_agent import CILAgentParameters
 from cil.cil_head import RegressionHeadParameters
 from rl_coach.architectures.tensorflow_components.architecture import Conv2d, Dense
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
@@ -13,14 +14,15 @@ from rl_coach.filters.observation.observation_crop_filter import ObservationCrop
 from rl_coach.filters.observation.observation_reduction_by_sub_parts_name_filter import ObservationReductionBySubPartsNameFilter
 from rl_coach.filters.observation.observation_rescale_to_size_filter import ObservationRescaleToSizeFilter
 from rl_coach.filters.observation.observation_to_uint8_filter import ObservationToUInt8Filter
+from rl_coach.schedules import ConstantSchedule
 from rl_coach.spaces import ImageObservationSpace
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from rainbow.rainbow_agent import RainbowAgentParameters
 from rl_coach.graph_managers.basic_rl_graph_manager import BasicRLGraphManager
 from rl_coach.graph_managers.graph_manager import ScheduleParameters
-from rl_coach.base_parameters import VisualizationParameters, InputEmbedderParameters
+from rl_coach.base_parameters import VisualizationParameters
+from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
 from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
 from rl_coach.environments.environment import MaxDumpMethod, SelectedPhaseOnlyDumpMethod, SingleLevelSelection
 
@@ -29,18 +31,18 @@ from rl_coach.environments.environment import MaxDumpMethod, SelectedPhaseOnlyDu
 ####################
 schedule_params = ScheduleParameters()
 schedule_params.improve_steps = TrainingSteps(10000000000)
-schedule_params.steps_between_evaluation_periods = EnvironmentSteps(1000000)
-schedule_params.evaluation_steps = EnvironmentSteps(125000)
-schedule_params.heatup_steps = EnvironmentSteps(20000)
+schedule_params.steps_between_evaluation_periods = TrainingSteps(500)
+schedule_params.evaluation_steps = EnvironmentEpisodes(5)
+schedule_params.heatup_steps = EnvironmentSteps(0)
 
 ################
 # Agent Params #
 ################
-agent_params = RainbowAgentParameters()
+agent_params = CILAgentParameters()
 
-# forward camera input
-agent_params.network_wrappers['main'].input_embedders_parameters['forward_camera'] = \
-    InputEmbedderParameters(scheme=[Conv2d([32, 5, 2]),
+# forward camera and measurements input
+agent_params.network_wrappers['main'].input_embedders_parameters = {
+    'forward_camera': InputEmbedderParameters(scheme=[Conv2d([32, 5, 2]),
                                     Conv2d([32, 3, 1]),
                                     Conv2d([64, 3, 2]),
                                     Conv2d([64, 3, 1]),
@@ -51,27 +53,29 @@ agent_params.network_wrappers['main'].input_embedders_parameters['forward_camera
                                     Dense([512]),
                                     Dense([512])],
                             dropout=True,
-                            batchnorm=True)
+                            batchnorm=True),
+     'measurements': InputEmbedderParameters(scheme=[Dense([128]),
+                                    Dense([128])])
+}
+
 # TODO: batch norm will apply to the fc layers which is not desirable.
 # TODO: what about flattening?
 # TODO: dropout rate can be configured currently
 # TODO: dropout should be configured differenetly per layer [1.0] * 8 + [0.7] * 2 + [0.5] * 2 + [0.5] * 1 + [0.5, 1.] * 5
-
-# measurements input
-agent_params.network_wrappers['main'].input_embedders_parameters['measurements'] = \
-    InputEmbedderParameters(scheme=[Dense([128]),
-                                    Dense([128])])
 
 # simple fc middleware
 agent_params.network_wrappers['main'].middleware_parameters = FCMiddlewareParameters(scheme=[Dense([512])])
 
 # output branches
 agent_params.network_wrappers['main'].heads_parameters = [
-    RegressionHeadParameters(),  # follow lane (2 in the dataset)
-    RegressionHeadParameters(),  # left        (3 in the dataset)
-    RegressionHeadParameters(),  # right       (4 in the dataset)
-    RegressionHeadParameters()   # straight    (5 in the dataset)
+    RegressionHeadParameters(),
+    RegressionHeadParameters(),
+    RegressionHeadParameters(),
+    RegressionHeadParameters()
 ]
+# agent_params.network_wrappers['main'].num_output_head_copies = 4  # follow lane, left, right, straight
+agent_params.network_wrappers['main'].rescale_gradient_from_head_by_factor = [1, 1, 1, 1]
+agent_params.network_wrappers['main'].loss_weights = [1,1,1,1]
 # TODO: there should be another head predicting the speed which is connected directly to the forward camera embedding
 
 agent_params.network_wrappers['main'].batch_size = 120
@@ -93,14 +97,11 @@ agent_params.input_filter.add_observation_filter(
         ["forward_speed"], reduction_method=ObservationReductionBySubPartsNameFilter.ReductionMethod.Keep))
 
 # TODO: batches should contain an equal number of samples from each command
-# TODO: filter only the forward speed  V
-# TODO: slice image between 115-510    V
-# TODO: rescale image to 200x88        V
-# TODO: image rescaled to 0-1          V
-
 # TODO: if acc > brake => brake = 0. if brake < 0.1 => brake = 0. if speed > 10 and brake = 0 => acc = 0
+# TODO: normalize the speed with the maximum speed from the training set speed /= 25 (90 km/h)
 
-# TODO: normalize the speed with the maximum speed from the training set speed /= 25
+agent_params.exploration.epsilon_schedule = ConstantSchedule(0)
+agent_params.exploration.evaluation_epsilon = 0
 
 agent_params.memory.load_memory_from_file_path = "/home/cvds_lab/Documents/advanced-coach/carla_train_set_replay_buffer.p"
 
@@ -110,6 +111,8 @@ agent_params.memory.load_memory_from_file_path = "/home/cvds_lab/Documents/advan
 env_params = CarlaEnvironmentParameters()
 env_params.level = 'town1'
 env_params.cameras = [CameraTypes.FRONT]
+env_params.camera_height = 600
+env_params.camera_width = 800
 
 vis_params = VisualizationParameters()
 vis_params.video_dump_methods = [SelectedPhaseOnlyDumpMethod(RunPhase.TEST), MaxDumpMethod()]

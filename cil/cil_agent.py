@@ -18,8 +18,8 @@ from typing import Union
 
 import numpy as np
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
-from rl_coach.base_parameters import AgentParameters, MiddlewareScheme, NetworkParameters, InputEmbedderParameters, \
-    AlgorithmParameters
+from rl_coach.base_parameters import AgentParameters, MiddlewareScheme, NetworkParameters, AlgorithmParameters
+from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
 from rl_coach.exploration_policies.e_greedy import EGreedyParameters
 from rl_coach.memories.non_episodic.experience_replay import ExperienceReplayParameters
 
