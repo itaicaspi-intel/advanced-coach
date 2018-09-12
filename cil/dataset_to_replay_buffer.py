@@ -1,7 +1,7 @@
 import h5py
 import os
 import sys
-
+import numpy as np
 from rl_coach.core_types import Transition
 from rl_coach.memories.memory import MemoryGranularity
 from rl_coach.memories.non_episodic.experience_replay import ExperienceReplay
@@ -18,10 +18,12 @@ print("found {} files".format(len(train_set_files)))
 for file_idx, file in enumerate(train_set_files[:500]):
     print("extracting file {}: {}".format(file_idx, file))
     train_set = h5py.File(os.path.join(train_set_root, file), 'r')
-    observations = train_set['rgb'][:]                # forward camera
-    measurements = train_set['targets'][:, 10]        # forward speed
-    actions = train_set['targets'][:, :3]             # steer, gas, break
-    high_level_commands = train_set['targets'][:, 24]  # follow lane, left, right, straight
+    observations = train_set['rgb'][:]                                   # forward camera
+    measurements = np.expand_dims(train_set['targets'][:, 10], -1)       # forward speed
+    actions = train_set['targets'][:, :3]                                # steer, gas, break
+    actions[:, 1] -= actions[:, 2]
+    actions = actions[:, :2]
+    high_level_commands = train_set['targets'][:, 24].astype('int') - 2  # follow lane, left, right, straight
 
     file_length = train_set['rgb'].len()
     assert train_set['rgb'].len() == train_set['targets'].len()

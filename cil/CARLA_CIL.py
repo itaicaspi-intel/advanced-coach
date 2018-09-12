@@ -59,7 +59,6 @@ agent_params.network_wrappers['main'].input_embedders_parameters = {
 }
 
 # TODO: batch norm will apply to the fc layers which is not desirable.
-# TODO: what about flattening?
 # TODO: dropout rate can be configured currently
 # TODO: dropout should be configured differenetly per layer [1.0] * 8 + [0.7] * 2 + [0.5] * 2 + [0.5] * 1 + [0.5, 1.] * 5
 
@@ -75,7 +74,7 @@ agent_params.network_wrappers['main'].heads_parameters = [
 ]
 # agent_params.network_wrappers['main'].num_output_head_copies = 4  # follow lane, left, right, straight
 agent_params.network_wrappers['main'].rescale_gradient_from_head_by_factor = [1, 1, 1, 1]
-agent_params.network_wrappers['main'].loss_weights = [1,1,1,1]
+agent_params.network_wrappers['main'].loss_weights = [1, 1, 1, 1]
 # TODO: there should be another head predicting the speed which is connected directly to the forward camera embedding
 
 agent_params.network_wrappers['main'].batch_size = 120
@@ -100,10 +99,16 @@ agent_params.input_filter.add_observation_filter(
 # TODO: if acc > brake => brake = 0. if brake < 0.1 => brake = 0. if speed > 10 and brake = 0 => acc = 0
 # TODO: normalize the speed with the maximum speed from the training set speed /= 25 (90 km/h)
 
+# agent_params.exploration = AdditiveNoiseParameters()
 agent_params.exploration.epsilon_schedule = ConstantSchedule(0)
 agent_params.exploration.evaluation_epsilon = 0
+agent_params.exploration.continuous_exploration_policy_parameters.evaluation_noise_percentage = 0
+
+agent_params.algorithm.num_consecutive_playing_steps = EnvironmentSteps(0)
 
 agent_params.memory.load_memory_from_file_path = "/home/cvds_lab/Documents/advanced-coach/carla_train_set_replay_buffer.p"
+agent_params.memory.state_key_with_the_class_index = 'high_level_command'
+agent_params.memory.num_classes = 4
 
 ###############
 # Environment #

@@ -17,6 +17,8 @@
 from typing import Union
 
 import numpy as np
+
+from cil.balanced_experience_replay import BalancedExperienceReplayParameters
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
 from rl_coach.base_parameters import AgentParameters, MiddlewareScheme, NetworkParameters, AlgorithmParameters
 from rl_coach.architectures.tensorflow_components.embedders.embedder import InputEmbedderParameters
@@ -50,7 +52,7 @@ class CILAgentParameters(AgentParameters):
     def __init__(self):
         super().__init__(algorithm=CILAlgorithmParameters(),
                          exploration=EGreedyParameters(),
-                         memory=ExperienceReplayParameters(),
+                         memory=BalancedExperienceReplayParameters(),
                          networks={"main": CILNetworkParameters()})
 
     @property
@@ -62,19 +64,21 @@ class CILAgentParameters(AgentParameters):
 class CILAgent(ImitationAgent):
     def __init__(self, agent_parameters, parent: Union['LevelManager', 'CompositeAgent']=None):
         super().__init__(agent_parameters, parent)
+        self.current_high_level_control = 0
+
+    def extract_action_values(self, prediction):
+        return prediction[self.current_high_level_control].squeeze()
 
     def learn_from_batch(self, batch):
         network_keys = self.ap.network_wrappers['main'].input_embedders_parameters.keys()
 
-        # When using a policy head, the targets refer to the advantages that we are normally feeding the head with.
-        # In this case, we need the policy head to just predict probabilities, so while we usually train the network
-        # with log(Pi)*Advantages, in this specific case we will train it to log(Pi), which after the softmax will
-        # predict Pi (=probabilities)
-        targets = np.ones(batch.actions().shape[0])
+        target_values = self.networks['main'].online_network.predict({**batch.states(network_keys)})
 
-        result = self.networks['main'].train_and_sync_networks({**batch.states(network_keys),
-                                                                'output_0_0': batch.actions()},
-                                                               targets)
+        branch_to_update = batch.states(['high_level_command'])['high_level_command']
+        for idx, branch in enumerate(branch_to_update):
+            target_values[branch][idx] = batch.actions()[idx]
+
+        result = self.networks['main'].train_and_sync_networks({**batch.states(network_keys)}, target_values)
         total_loss, losses, unclipped_grads = result[:3]
 
         return total_loss, losses, unclipped_grads

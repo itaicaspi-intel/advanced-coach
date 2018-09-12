@@ -38,7 +38,7 @@ class RegressionHead(Head):
                          dense_layer=dense_layer)
         self.name = 'regression_head'
         if isinstance(self.spaces.action, BoxActionSpace):
-            self.num_actions = 1
+            self.num_actions = self.spaces.action.shape[0]
         elif isinstance(self.spaces.action, DiscreteActionSpace):
             self.num_actions = len(self.spaces.action.actions)
         self.return_type = QActionStateValue
