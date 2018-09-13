@@ -96,7 +96,6 @@ agent_params.input_filter.add_observation_filter(
     ObservationReductionBySubPartsNameFilter(
         ["forward_speed"], reduction_method=ObservationReductionBySubPartsNameFilter.ReductionMethod.Keep))
 
-# TODO: batches should contain an equal number of samples from each command
 # TODO: if acc > brake => brake = 0. if brake < 0.1 => brake = 0. if speed > 10 and brake = 0 => acc = 0
 # TODO: normalize the speed with the maximum speed from the training set speed /= 25 (90 km/h)
 
@@ -118,6 +117,8 @@ env_params.level = 'town1'
 env_params.cameras = [CameraTypes.FRONT]
 env_params.camera_height = 600
 env_params.camera_width = 800
+env_params.allow_braking = True
+env_params.quality = CarlaEnvironmentParameters.Quality.EPIC
 
 vis_params = VisualizationParameters()
 vis_params.video_dump_methods = [SelectedPhaseOnlyDumpMethod(RunPhase.TEST), MaxDumpMethod()]

@@ -17,7 +17,7 @@
 import operator
 import random
 from enum import Enum
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Union
 
 import numpy as np
 
@@ -32,7 +32,7 @@ class BalancedExperienceReplayParameters(ExperienceReplayParameters):
         super().__init__()
         self.max_size = (MemoryGranularity.Transitions, 1000000)
         self.allow_duplicates_in_batch_sampling = False
-        self.num_classes = 1
+        self.num_classes = 0
         self.state_key_with_the_class_index = 'class'
 
     @property
@@ -45,7 +45,7 @@ A replay buffer which allows sampling batches which are balanced in terms of the
 """
 class BalancedExperienceReplay(ExperienceReplay):
     def __init__(self, max_size: Tuple[MemoryGranularity, int], allow_duplicates_in_batch_sampling: bool=True,
-                 num_classes: int=1, state_key_with_the_class_index: Any='class'):
+                 num_classes: int=0, state_key_with_the_class_index: Any='class'):
         """
         :param max_size: the maximum number of transitions or episodes to hold in the memory
         :param allow_duplicates_in_batch_sampling: allow having the same transition multiple times in a batch
@@ -58,8 +58,11 @@ class BalancedExperienceReplay(ExperienceReplay):
         self.num_classes = num_classes
         self.state_key_with_the_class_index = state_key_with_the_class_index
         self.transitions = [[] for _ in range(self.num_classes)]
+        self.transitions_order = []
 
-    # TODO: add enforce length and retrieve transition etc.
+        if self.num_classes < 2:
+            raise ValueError("The number of classes for a balanced replay buffer should be at least 2. "
+                             "The number of classes that were defined are: {}".format(self.num_classes))
 
     def store(self, transition: Transition, lock: bool=True) -> None:
         """
@@ -73,12 +76,20 @@ class BalancedExperienceReplay(ExperienceReplay):
             self.reader_writer_lock.lock_writing_and_reading()
 
         self._num_transitions += 1
+
+        if self.state_key_with_the_class_index not in transition.state.keys():
+            raise ValueError("The class index was not present in the state of the transition under the given key ({})"
+                             .format(self.state_key_with_the_class_index))
+
         class_idx = transition.state[self.state_key_with_the_class_index]
+
         if class_idx >= self.num_classes:
             raise ValueError("The given class index is outside the defined number of classes for the replay buffer. "
                              "The given class was: {} and the number of classes defined is: {}"
                              .format(class_idx, self.num_classes))
+
         self.transitions[class_idx].append(transition)
+        self.transitions_order.append(class_idx)
         self._enforce_max_length()
 
         if lock:
@@ -121,3 +132,40 @@ class BalancedExperienceReplay(ExperienceReplay):
         self.reader_writer_lock.release_writing()
 
         return batch
+
+    def remove_transition(self, transition_index: int, lock: bool=True) -> None:
+        raise ValueError("It is not possible to remove specific transitions with a balanced replay buffer")
+
+    def get_transition(self, transition_index: int, lock: bool=True) -> Union[None, Transition]:
+        raise ValueError("It is not possible to access specific transitions with a balanced replay buffer")
+
+    def _enforce_max_length(self) -> None:
+        """
+        Make sure that the size of the replay buffer does not pass the maximum size allowed.
+        If it passes the max size, the oldest transition in the replay buffer will be removed.
+        This function does not use locks since it is only called internally
+        :return: None
+        """
+        granularity, size = self.max_size
+        if granularity == MemoryGranularity.Transitions:
+            while size != 0 and self.num_transitions() > size:
+                self._num_transitions -= 1
+                del self.transitions[self.transitions_order[0]][0]
+                del self.transitions_order[0]
+        else:
+            raise ValueError("The granularity of the replay buffer can only be set in terms of transitions")
+
+    def clean(self, lock: bool=True) -> None:
+        """
+        Clean the memory by removing all the episodes
+        :return: None
+        """
+        if lock:
+            self.reader_writer_lock.lock_writing_and_reading()
+
+        self.transitions = [[] for _ in range(self.num_classes)]
+        self.transitions_order = []
+        self._num_transitions = 0
+
+        if lock:
+            self.reader_writer_lock.release_writing_and_reading()
