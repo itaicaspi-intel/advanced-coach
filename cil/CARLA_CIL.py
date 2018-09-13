@@ -9,6 +9,7 @@ from rl_coach.architectures.tensorflow_components.architecture import Conv2d, De
 from rl_coach.architectures.tensorflow_components.middlewares.fc_middleware import FCMiddlewareParameters
 from rl_coach.architectures.tensorflow_components.middlewares.middleware import MiddlewareParameters
 from rl_coach.environments.carla_environment import CarlaEnvironmentParameters, CameraTypes
+from rl_coach.exploration_policies.additive_noise import AdditiveNoiseParameters
 from rl_coach.filters.filter import InputFilter
 from rl_coach.filters.observation.observation_crop_filter import ObservationCropFilter
 from rl_coach.filters.observation.observation_reduction_by_sub_parts_name_filter import ObservationReductionBySubPartsNameFilter
@@ -99,10 +100,9 @@ agent_params.input_filter.add_observation_filter(
 # TODO: if acc > brake => brake = 0. if brake < 0.1 => brake = 0. if speed > 10 and brake = 0 => acc = 0
 # TODO: normalize the speed with the maximum speed from the training set speed /= 25 (90 km/h)
 
-# agent_params.exploration = AdditiveNoiseParameters()
-agent_params.exploration.epsilon_schedule = ConstantSchedule(0)
-agent_params.exploration.evaluation_epsilon = 0
-agent_params.exploration.continuous_exploration_policy_parameters.evaluation_noise_percentage = 0
+agent_params.exploration = AdditiveNoiseParameters()
+agent_params.exploration.noise_percentage_schedule = ConstantSchedule(0)
+agent_params.exploration.evaluation_noise_percentage = 0
 
 agent_params.algorithm.num_consecutive_playing_steps = EnvironmentSteps(0)
 

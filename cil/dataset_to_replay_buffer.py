@@ -20,9 +20,10 @@ for file_idx, file in enumerate(train_set_files[:500]):
     train_set = h5py.File(os.path.join(train_set_root, file), 'r')
     observations = train_set['rgb'][:]                                   # forward camera
     measurements = np.expand_dims(train_set['targets'][:, 10], -1)       # forward speed
-    actions = train_set['targets'][:, :3]                                # steer, gas, break
+    actions = train_set['targets'][:, :3]                                # steer, gas, brake
     actions[:, 1] -= actions[:, 2]
-    actions = actions[:, :2]
+    actions = actions[:, :2][:, ::-1]
+
     high_level_commands = train_set['targets'][:, 24].astype('int') - 2  # follow lane, left, right, straight
 
     file_length = train_set['rgb'].len()
