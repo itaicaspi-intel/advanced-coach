@@ -68,7 +68,6 @@ class CILAgent(ImitationAgent):
 
     def choose_action(self, curr_state):
         self.current_high_level_control = curr_state['high_level_command']
-        print(self.current_high_level_control)
         return super().choose_action(curr_state)
 
     def extract_action_values(self, prediction):
